@@ -1,0 +1,220 @@
+# Global settings
+global:
+  imageRegistry: "docker.io"
+  imagePullSecrets: []
+  storageClass: ""
+
+# Common settings
+common:
+  airflowVersion: "2.10.0"
+  namespace: "airflow"
+  labels:
+    app: "airflow"
+  annotations: {}
+
+# Image settings
+images:
+  webserver:
+    repository: "gwhearn/airflow-webserver"
+    tag: "2.10.0"
+    pullPolicy: IfNotPresent
+  scheduler:
+    repository: "gwhearn/airflow-scheduler"
+    tag: "2.10.0"
+    pullPolicy: IfNotPresent
+  worker:
+    repository: "gwhearn/airflow-worker"
+    tag: "2.10.0"
+    pullPolicy: IfNotPresent
+  triggerer:
+    repository: "gwhearn/airflow-triggerer"
+    tag: "2.10.0"
+    pullPolicy: IfNotPresent
+  pgbouncer:
+    repository: "gwhearn/pgbouncer"
+    tag: "1.2.0"
+    pullPolicy: IfNotPresent
+
+# Security settings
+security:
+  webserverSecretKey: "your-secret-key"
+  fernetKey: "your-fernet-key"
+  webserverCredentials:
+    username: "admin"
+    password: "admin"
+  postgresql:
+    username: "airflow"
+    password: "airflow"
+    database: "airflow"
+  redis:
+    password: "redis"
+
+# Database settings
+postgresql:
+  enabled: true
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+
+# Redis settings
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: true
+    password: "redis"
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+
+# PgBouncer settings
+pgbouncer:
+  enabled: true
+  maxClientConnections: 1000
+  poolSize: 20
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "200m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Airflow component settings
+webserver:
+  replicas: 1
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+
+scheduler:
+  replicas: 1
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1000m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+
+worker:
+  replicas: 2
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1000m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+
+triggerer:
+  replicas: 1
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+
+# Storage settings
+persistence:
+  logs:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+  dags:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+  plugins:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+
+# Backup settings
+backup:
+  enabled: true
+  schedule: "0 0 * * *"
+  retention: 7
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "200m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+# Log rotation settings
+logRotation:
+  enabled: true
+  schedule: "0 * * * *"
+  maxSize: "100M"
+  retention: 5
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "200m"
+
+# Network settings
+network:
+  webserver:
+    port: 8080
+  flower:
+    port: 5555
+  redis:
+    port: 6379
+  postgresql:
+    port: 5432
+  pgbouncer:
+    port: 6432
+
+# OpenShift specific settings
+openshift:
+  route:
+    enabled: true
+    host: ""
+    tls:
+      enabled: true
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+  securityContext:
+    enabled: true
+    fsGroup: 1001
+    runAsUser: 1001
+    runAsGroup: 1001

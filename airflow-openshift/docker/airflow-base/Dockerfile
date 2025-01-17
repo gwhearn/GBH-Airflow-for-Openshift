@@ -1,77 +1,61 @@
-# Start with UBI8 minimal as base
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9
-
-# Set labels for better maintainability
-LABEL maintainer="GBH <gwhearn@gmail.com>"
-LABEL description="Apache Airflow 2.10 on UBI8"
-LABEL version="1.0.0"
+FROM python:3.11-slim-bookworm
 
 # Set environment variables
-ENV AIRFLOW_HOME=/opt/airflow
-ENV AIRFLOW_VERSION=2.10.0
-ENV PYTHON_VERSION=3.10
-ENV CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
-ENV VIRTUAL_ENV=/opt/venv
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+ENV AIRFLOW_HOME=/opt/airflow \
+    AIRFLOW_VERSION=2.10.0 \
+    PYTHON_VERSION=3.11 \
+    CONSTRAINT_URL=https://raw.githubusercontent.com/apache/airflow/constraints-2.10.0/constraints-3.11.txt
 
-# Create airflow user with specific UID/GID for OpenShift compatibility
-ENV AIRFLOW_UID=1001
-ENV AIRFLOW_GID=1001
-RUN microdnf install -y shadow-utils && \
-    groupadd -g ${AIRFLOW_GID} airflow && \
-    useradd -u ${AIRFLOW_UID} -g ${AIRFLOW_GID} -d ${AIRFLOW_HOME} airflow
-
-# Install required packages
-RUN microdnf update -y && \
-    microdnf install -y \
-    python39 \
-    python39-devel \
-    gcc \
-    gcc-c++ \
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    default-libmysqlclient-dev \
+    freetds-bin \
+    freetds-dev \
     git \
-    wget \
-    tar \
-    gzip \
-    libffi-devel \
-    openssl-devel \
-    bzip2-devel \
-    sqlite-devel \
-    xz-devel \
-    which \
-    procps \
-    python3-pip \
-    && microdnf clean all
+    gosu \
+    libffi-dev \
+    libkrb5-dev \
+    libpq-dev \
+    libsasl2-2 \
+    libsasl2-dev \
+    libsasl2-modules \
+    libssl-dev \
+    locales \
+    lsb-release \
+    sasl2-bin \
+    sqlite3 \
+    unixodbc \
+    unixodbc-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Create virtual environment
-RUN python3.9 -m venv $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+# Create airflow user
+RUN groupadd -g 1001 airflow && \
+    useradd -u 1001 -g 1001 -d /opt/airflow airflow
 
-# Upgrade pip and install Airflow
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir "apache-airflow==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir "apache-airflow==${AIRFLOW_VERSION}" -r requirements.txt --constraint "${CONSTRAINT_URL}"
 
-# Create necessary directories
-RUN mkdir -p ${AIRFLOW_HOME} && \
-    mkdir -p ${AIRFLOW_HOME}/dags && \
-    mkdir -p ${AIRFLOW_HOME}/logs && \
-    mkdir -p ${AIRFLOW_HOME}/plugins && \
-    mkdir -p ${AIRFLOW_HOME}/config
-
-# Copy entrypoint script
+# Copy configuration files
+COPY airflow.cfg ${AIRFLOW_HOME}/airflow.cfg
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY webserver_config.py ${AIRFLOW_HOME}/webserver_config.py
 
-# Set permissions for OpenShift
+# Set permissions for config files
 RUN chown -R airflow:airflow ${AIRFLOW_HOME} && \
-    chmod -R g+rwx ${AIRFLOW_HOME} && \
-    chown -R airflow:airflow ${VIRTUAL_ENV} && \
-    chmod -R g+rwx ${VIRTUAL_ENV}
+    chmod -R g+w ${AIRFLOW_HOME} && \
+    chmod +x /entrypoint.sh
 
 # Switch to airflow user
-USER ${AIRFLOW_UID}
+USER airflow
 WORKDIR ${AIRFLOW_HOME}
 
-# Expose port for webserver
+# Expose ports
 EXPOSE 8080
 
+# Set entrypoint
 ENTRYPOINT ["/entrypoint.sh"] 

@@ -1,20 +1,17 @@
-# Use our base Airflow image
+# Use our custom Airflow base image
 FROM gwhearn/airflow-ubi8:2.10.0
 
-# Override labels
-LABEL description="Apache Airflow 2.10 Triggerer"
+# Set environment variables
+ENV AIRFLOW_COMPONENT=triggerer
 
-# Switch to root for file operations
+# Create required directories
 USER root
-
-# Copy component-specific entrypoint
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh && \
-    chown airflow:airflow /entrypoint.sh
+RUN mkdir -p /opt/airflow/logs/triggerer && \
+    chown -R airflow:airflow /opt/airflow/logs/triggerer && \
+    chmod -R g+w /opt/airflow/logs/triggerer
 
 # Switch back to airflow user
-USER ${AIRFLOW_UID}
+USER airflow
 
-# No need to expose ports for triggerer
-
-ENTRYPOINT ["/entrypoint.sh"] 
+# Command to run
+CMD ["triggerer"] 

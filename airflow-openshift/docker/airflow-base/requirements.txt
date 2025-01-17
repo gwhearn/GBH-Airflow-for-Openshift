@@ -1,0 +1,31 @@
+# Core dependencies
+apache-airflow[amazon,azure,celery,crypto,google,postgres,redis]==2.10.0
+celery==5.4.0
+psycopg2-binary==2.9.9
+redis==5.0.8
+
+# AWS Provider
+apache-airflow-providers-amazon==8.15.0
+
+# Azure Provider
+apache-airflow-providers-microsoft-azure==8.3.0
+
+# Google Provider
+apache-airflow-providers-google==10.12.0
+
+# Additional utilities
+cryptography==42.0.2
+pendulum==3.0.0
+python-dateutil==2.8.2
+requests==2.31.0
+SQLAlchemy==1.4.51
+urllib3==2.2.0
+watchtower==3.0.1
+
+# Development tools
+pytest==8.0.0
+pytest-cov==4.1.0
+black==24.1.1
+flake8==7.0.0
+mypy==1.8.0
+pre-commit==3.6.0 

@@ -1,0 +1,56 @@
+{{- if .Values.persistence.logs.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-logs
+  namespace: {{ .Values.common.namespace }}
+  labels:
+    {{- include "airflow.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.persistence.logs.size }}
+  {{- if .Values.persistence.logs.storageClass }}
+  storageClassName: {{ .Values.persistence.logs.storageClass }}
+  {{- end }}
+---
+{{- end }}
+{{- if .Values.persistence.dags.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-dags
+  namespace: {{ .Values.common.namespace }}
+  labels:
+    {{- include "airflow.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.persistence.dags.size }}
+  {{- if .Values.persistence.dags.storageClass }}
+  storageClassName: {{ .Values.persistence.dags.storageClass }}
+  {{- end }}
+---
+{{- end }}
+{{- if .Values.persistence.plugins.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-plugins
+  namespace: {{ .Values.common.namespace }}
+  labels:
+    {{- include "airflow.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.persistence.plugins.size }}
+  {{- if .Values.persistence.plugins.storageClass }}
+  storageClassName: {{ .Values.persistence.plugins.storageClass }}
+  {{- end }}
+{{- end }}

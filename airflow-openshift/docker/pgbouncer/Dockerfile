@@ -1,76 +1,43 @@
-# Use UBI8 minimal as base
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9
-
-# Set labels
-LABEL maintainer="GBH <gwhearn@gmail.com>"
-LABEL description="PgBouncer connection pooler for PostgreSQL"
-LABEL version="1.0.0"
+FROM postgres:15.5
 
 # Set environment variables
-ENV PGBOUNCER_VERSION=1.20.1
-ENV PGBOUNCER_USER=pgbouncer
-ENV PGBOUNCER_PASSWORD=pgbouncer
+ENV PGBOUNCER_USER=pgbouncer \
+    PGBOUNCER_PASSWORD=pgbouncer \
+    PGBOUNCER_DATABASE=postgres \
+    PGBOUNCER_PORT=6432 \
+    POSTGRESQL_HOST=postgres \
+    POSTGRESQL_PORT=5432
+
+# Switch to root to modify filesystem
+USER root
+
+# Install PgBouncer
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    pgbouncer \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create pgbouncer user with specific UID/GID for OpenShift compatibility
-ENV PGBOUNCER_UID=1002
-ENV PGBOUNCER_GID=1002
-RUN microdnf install -y shadow-utils && \
-    groupadd -g ${PGBOUNCER_GID} pgbouncer && \
-    useradd -u ${PGBOUNCER_UID} -g ${PGBOUNCER_GID} -d /var/run/pgbouncer pgbouncer
-
-# Install build dependencies
-RUN microdnf install -y \
-    gcc \
-    make \
-    pkgconfig \
-    libevent-devel \
-    openssl-devel \
-    wget \
-    tar \
-    gzip \
-    && microdnf clean all
-
-# Download and install PgBouncer
-WORKDIR /tmp
-RUN wget https://www.pgbouncer.org/downloads/files/${PGBOUNCER_VERSION}/pgbouncer-${PGBOUNCER_VERSION}.tar.gz && \
-    tar xvf pgbouncer-${PGBOUNCER_VERSION}.tar.gz && \
-    cd pgbouncer-${PGBOUNCER_VERSION} && \
-    ./configure --prefix=/usr && \
-    make && \
-    make install && \
-    cd .. && \
-    rm -rf pgbouncer-${PGBOUNCER_VERSION}*
-
-# Create necessary directories
-RUN mkdir -p /etc/pgbouncer && \
-    mkdir -p /var/log/pgbouncer && \
-    mkdir -p /var/run/pgbouncer && \
-    chown -R pgbouncer:pgbouncer /etc/pgbouncer && \
-    chown -R pgbouncer:pgbouncer /var/log/pgbouncer && \
-    chown -R pgbouncer:pgbouncer /var/run/pgbouncer && \
-    chmod -R 700 /var/run/pgbouncer
+RUN usermod -u 1001 postgres && \
+    groupmod -g 1001 postgres && \
+    mkdir -p /var/log/pgbouncer /var/run/pgbouncer /etc/pgbouncer && \
+    chown -R 1001:1001 /var/log/pgbouncer /var/run/pgbouncer /etc/pgbouncer && \
+    chmod -R 0700 /var/log/pgbouncer /var/run/pgbouncer /etc/pgbouncer && \
+    chmod g=u /etc/passwd /etc/group
 
 # Copy configuration files
-COPY pgbouncer.ini /etc/pgbouncer/
-COPY userlist.txt /etc/pgbouncer/
-RUN chown pgbouncer:pgbouncer /etc/pgbouncer/pgbouncer.ini && \
-    chown pgbouncer:pgbouncer /etc/pgbouncer/userlist.txt && \
-    chmod 644 /etc/pgbouncer/pgbouncer.ini && \
-    chmod 644 /etc/pgbouncer/userlist.txt
+COPY pgbouncer.ini /etc/pgbouncer/pgbouncer.ini
+COPY userlist.txt /etc/pgbouncer/userlist.txt
 
-# Copy entrypoint script
-COPY entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/entrypoint.sh && \
-    chown pgbouncer:pgbouncer /usr/local/bin/entrypoint.sh
+# Set permissions for config files
+RUN chown 1001:1001 /etc/pgbouncer/pgbouncer.ini /etc/pgbouncer/userlist.txt && \
+    chmod 0600 /etc/pgbouncer/pgbouncer.ini /etc/pgbouncer/userlist.txt
 
-# Switch to pgbouncer user
-USER ${PGBOUNCER_UID}
-
-# Create volume mount points
-VOLUME ["/var/log/pgbouncer"]
+# Switch back to postgres user
+USER 1001
 
 # Expose PgBouncer port
 EXPOSE 6432
 
-# Set entrypoint
-ENTRYPOINT ["entrypoint.sh"] 
+# Set default command
+CMD ["pgbouncer", "/etc/pgbouncer/pgbouncer.ini"] 

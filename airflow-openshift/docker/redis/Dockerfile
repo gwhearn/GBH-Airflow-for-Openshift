@@ -1,70 +1,34 @@
-# Use UBI8 minimal as base
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9
-
-# Set labels
-LABEL maintainer="GBH <gwhearn@gmail.com>"
-LABEL description="Redis server for Airflow Celery broker"
-LABEL version="1.0.0"
+FROM redis:7.2
 
 # Set environment variables
-ENV REDIS_VERSION=7.2.4
-ENV REDIS_USER=redis
-ENV REDIS_DATA_DIR=/data
-ENV REDIS_CONF_DIR=/etc/redis
+ENV REDIS_PORT=6379
+
+# Switch to root to modify filesystem
+USER root
 
 # Create redis user with specific UID/GID for OpenShift compatibility
-ENV REDIS_UID=1003
-ENV REDIS_GID=1003
-RUN microdnf install -y shadow-utils && \
-    groupadd -g ${REDIS_GID} redis && \
-    useradd -u ${REDIS_UID} -g ${REDIS_GID} -d ${REDIS_DATA_DIR} redis
-
-# Install build dependencies
-RUN microdnf install -y \
-    gcc \
-    make \
-    wget \
-    tar \
-    gzip \
-    procps-ng \
-    && microdnf clean all
-
-# Download and install Redis
-WORKDIR /tmp
-RUN wget https://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz && \
-    tar xzf redis-${REDIS_VERSION}.tar.gz && \
-    cd redis-${REDIS_VERSION} && \
-    make MALLOC=libc && \
-    make install && \
-    cd .. && \
-    rm -rf redis-${REDIS_VERSION}*
-
-# Create necessary directories
-RUN mkdir -p ${REDIS_DATA_DIR} && \
-    mkdir -p ${REDIS_CONF_DIR} && \
-    mkdir -p /var/log/redis
+RUN groupmod -g 1001 redis && \
+    usermod -u 1001 -g 1001 redis && \
+    mkdir -p /data /var/log/redis && \
+    chown -R 1001:1001 /data /var/log/redis && \
+    chmod -R 0700 /data /var/log/redis && \
+    chmod g=u /etc/passwd /etc/group
 
 # Copy configuration files
-COPY redis.conf ${REDIS_CONF_DIR}/
-COPY entrypoint.sh /usr/local/bin/
+COPY redis.conf /usr/local/etc/redis/redis.conf
 
-# Set permissions
-RUN chown -R redis:redis ${REDIS_DATA_DIR} && \
-    chmod -R 0750 ${REDIS_DATA_DIR} && \
-    chown -R redis:redis ${REDIS_CONF_DIR} && \
-    chmod -R 0750 ${REDIS_CONF_DIR} && \
-    chown -R redis:redis /var/log/redis && \
-    chmod -R 0750 /var/log/redis && \
-    chmod +x /usr/local/bin/entrypoint.sh
+# Set permissions for config files
+RUN chown 1001:1001 /usr/local/etc/redis/redis.conf && \
+    chmod 0600 /usr/local/etc/redis/redis.conf
 
-# Switch to redis user
-USER ${REDIS_UID}
+# Switch back to redis user
+USER 1001
 
 # Create volume mount points
-VOLUME ["${REDIS_DATA_DIR}", "/var/log/redis"]
+VOLUME ["/data", "/var/log/redis"]
 
 # Expose Redis port
 EXPOSE 6379
 
-# Set entrypoint
-ENTRYPOINT ["entrypoint.sh"] 
+# Set default command
+CMD ["redis-server", "/usr/local/etc/redis/redis.conf"] 

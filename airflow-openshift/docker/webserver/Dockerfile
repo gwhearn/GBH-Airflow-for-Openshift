@@ -1,21 +1,22 @@
-# Use our base Airflow image
+# Use our custom Airflow base image
 FROM gwhearn/airflow-ubi8:2.10.0
 
-# Override labels
-LABEL description="Apache Airflow 2.10 Webserver"
+# Set environment variables
+ENV AIRFLOW_COMPONENT=webserver \
+    AIRFLOW_WWW_USER_USERNAME=admin \
+    AIRFLOW_WWW_USER_PASSWORD=admin
 
-# Switch to root for file operations
+# Create required directories
 USER root
-
-# Copy component-specific entrypoint
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh && \
-    chown airflow:airflow /entrypoint.sh
+RUN mkdir -p /opt/airflow/logs/webserver && \
+    chown -R airflow:airflow /opt/airflow/logs/webserver && \
+    chmod -R g+w /opt/airflow/logs/webserver
 
 # Switch back to airflow user
-USER ${AIRFLOW_UID}
+USER airflow
 
-# Expose webserver port
+# Expose web UI port
 EXPOSE 8080
 
-ENTRYPOINT ["/entrypoint.sh"] 
+# Command to run
+CMD ["webserver"] 

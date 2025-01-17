@@ -1,2 +1,2 @@
-"pgbouncer" "md5d45fd2e25c41b6e2872c5f8e0bef1e1d"
-"airflow" "md5d45fd2e2f5c41b6e2872c5f8e0bef1e1d" 
+"pgbouncer" "md5d45fd2e0f3f0bf7e3c02f4b5e60b2b2b"
+"postgres" "md5e8a48653851e28c69d0506508fb27fc5" 

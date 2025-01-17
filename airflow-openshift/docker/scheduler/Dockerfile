@@ -1,20 +1,17 @@
-# Use our base Airflow image
+# Use our custom Airflow base image
 FROM gwhearn/airflow-ubi8:2.10.0
 
-# Override labels
-LABEL description="Apache Airflow 2.10 Scheduler"
+# Set environment variables
+ENV AIRFLOW_COMPONENT=scheduler
 
-# Switch to root for file operations
+# Create required directories
 USER root
-
-# Copy component-specific entrypoint
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh && \
-    chown airflow:airflow /entrypoint.sh
+RUN mkdir -p /opt/airflow/logs/scheduler && \
+    chown -R airflow:airflow /opt/airflow/logs/scheduler && \
+    chmod -R g+w /opt/airflow/logs/scheduler
 
 # Switch back to airflow user
-USER ${AIRFLOW_UID}
+USER airflow
 
-# No need to expose ports for scheduler
-
-ENTRYPOINT ["/entrypoint.sh"] 
+# Command to run
+CMD ["scheduler"] 
