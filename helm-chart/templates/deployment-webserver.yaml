@@ -1,0 +1,86 @@
+apiVersion: {{ template "airflow.deployment.apiVersion" . }}
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-webserver
+  namespace: {{ .Values.common.namespace }}
+  labels:
+    {{- include "airflow.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webserver
+spec:
+  replicas: {{ .Values.webserver.replicas }}
+  selector:
+    matchLabels:
+      {{- include "airflow.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: webserver
+  template:
+    metadata:
+      labels:
+        {{- include "airflow.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: webserver
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secrets: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      {{- with .Values.openshift.securityContext }}
+      securityContext:
+        runAsUser: {{ .runAsUser }}
+        runAsGroup: {{ .runAsGroup }}
+        fsGroup: {{ .fsGroup }}
+      {{- end }}
+      serviceAccountName: {{ .Release.Name }}-airflow
+      containers:
+        - name: webserver
+          image: "{{ .Values.images.webserver.repository }}:{{ .Values.images.webserver.tag }}"
+          imagePullPolicy: {{ .Values.images.webserver.pullPolicy }}
+          ports:
+            - name: web
+              containerPort: {{ .Values.network.webserver.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-airflow-config
+            - secretRef:
+                name: {{ .Release.Name }}-airflow-secrets
+          resources:
+            {{- toYaml .Values.webserver.resources | nindent 12 }}
+          volumeMounts:
+            - name: logs
+              mountPath: /opt/airflow/logs
+            - name: dags
+              mountPath: /opt/airflow/dags
+            - name: plugins
+              mountPath: /opt/airflow/plugins
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: web
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: web
+            initialDelaySeconds: 30
+            periodSeconds: 15
+      volumes:
+        - name: logs
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-logs
+        - name: dags
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-dags
+        - name: plugins
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-plugins
+      {{- with .Values.webserver.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.webserver.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.webserver.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }} 

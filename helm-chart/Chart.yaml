@@ -1,18 +1,15 @@
 apiVersion: v2
-name: airflow-openshift
-description: A Helm chart for deploying Apache Airflow 2.10.0 on OpenShift
+name: airflow
+description: Apache Airflow deployment for OpenShift
 type: application
 version: 0.1.0
 appVersion: "2.10.0"
+keywords:
+  - airflow
+  - workflow
+  - scheduler
+  - openshift
 maintainers:
-  - name: "G Hearn"
-    email: "gwhearn@gmail.com"
-dependencies:
-  - name: postgresql
-    version: "12.5.6"
-    repository: "https://charts.bitnami.com/bitnami"
-    condition: postgresql.enabled
-  - name: redis
-    version: "17.11.3"
-    repository: "https://charts.bitnami.com/bitnami"
-    condition: redis.enabled
+  - name: "Graham Hearn"
+    email: "graham.hearn@example.com"
+dependencies: []

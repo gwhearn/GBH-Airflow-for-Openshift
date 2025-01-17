@@ -1,0 +1,86 @@
+apiVersion: {{ template "airflow.deployment.apiVersion" . }}
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-scheduler
+  namespace: {{ .Values.common.namespace }}
+  labels:
+    {{- include "airflow.labels" . | nindent 4 }}
+    app.kubernetes.io/component: scheduler
+spec:
+  replicas: {{ .Values.scheduler.replicas }}
+  selector:
+    matchLabels:
+      {{- include "airflow.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: scheduler
+  template:
+    metadata:
+      labels:
+        {{- include "airflow.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: scheduler
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secrets: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      {{- with .Values.openshift.securityContext }}
+      securityContext:
+        runAsUser: {{ .runAsUser }}
+        runAsGroup: {{ .runAsGroup }}
+        fsGroup: {{ .fsGroup }}
+      {{- end }}
+      serviceAccountName: {{ .Release.Name }}-airflow
+      containers:
+        - name: scheduler
+          image: "{{ .Values.images.scheduler.repository }}:{{ .Values.images.scheduler.tag }}"
+          imagePullPolicy: {{ .Values.images.scheduler.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-airflow-config
+            - secretRef:
+                name: {{ .Release.Name }}-airflow-secrets
+          resources:
+            {{- toYaml .Values.scheduler.resources | nindent 12 }}
+          volumeMounts:
+            - name: logs
+              mountPath: /opt/airflow/logs
+            - name: dags
+              mountPath: /opt/airflow/dags
+            - name: plugins
+              mountPath: /opt/airflow/plugins
+          livenessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - "airflow jobs check --job-type SchedulerJob --hostname $(hostname)"
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - "airflow jobs check --job-type SchedulerJob --hostname $(hostname)"
+            initialDelaySeconds: 30
+            periodSeconds: 15
+      volumes:
+        - name: logs
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-logs
+        - name: dags
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-dags
+        - name: plugins
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-plugins
+      {{- with .Values.scheduler.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.scheduler.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.scheduler.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }} 

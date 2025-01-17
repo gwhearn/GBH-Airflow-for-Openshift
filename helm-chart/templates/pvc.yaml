@@ -1,4 +1,3 @@
-{{- if .Values.persistence.logs.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -11,13 +10,11 @@ spec:
     - ReadWriteMany
   resources:
     requests:
-      storage: {{ .Values.persistence.logs.size }}
-  {{- if .Values.persistence.logs.storageClass }}
-  storageClassName: {{ .Values.persistence.logs.storageClass }}
+      storage: {{ .Values.storage.logs.size }}
+  {{- if .Values.storage.logs.storageClass }}
+  storageClassName: {{ .Values.storage.logs.storageClass }}
   {{- end }}
 ---
-{{- end }}
-{{- if .Values.persistence.dags.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -30,13 +27,11 @@ spec:
     - ReadWriteMany
   resources:
     requests:
-      storage: {{ .Values.persistence.dags.size }}
-  {{- if .Values.persistence.dags.storageClass }}
-  storageClassName: {{ .Values.persistence.dags.storageClass }}
+      storage: {{ .Values.storage.dags.size }}
+  {{- if .Values.storage.dags.storageClass }}
+  storageClassName: {{ .Values.storage.dags.storageClass }}
   {{- end }}
 ---
-{{- end }}
-{{- if .Values.persistence.plugins.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -49,8 +44,24 @@ spec:
     - ReadWriteMany
   resources:
     requests:
-      storage: {{ .Values.persistence.plugins.size }}
-  {{- if .Values.persistence.plugins.storageClass }}
-  storageClassName: {{ .Values.persistence.plugins.storageClass }}
+      storage: {{ .Values.storage.plugins.size }}
+  {{- if .Values.storage.plugins.storageClass }}
+  storageClassName: {{ .Values.storage.plugins.storageClass }}
   {{- end }}
-{{- end }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-backup
+  namespace: {{ .Values.common.namespace }}
+  labels:
+    {{- include "airflow.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.storage.backup.size }}
+  {{- if .Values.storage.backup.storageClass }}
+  storageClassName: {{ .Values.storage.backup.storageClass }}
+  {{- end }}

@@ -1,0 +1,170 @@
+common:
+  namespace: airflow
+  labels: {}
+  annotations: {}
+
+airflow:
+  secretKey: "your-32-character-secret-key-here"
+  fernetKey: "your-32-bit-fernet-key-here"
+  webserver:
+    username: "admin"
+    password: "admin"
+
+images:
+  webserver:
+    repository: gwhearn/airflow-ubi8
+    tag: "2.10.0"
+    pullPolicy: IfNotPresent
+  scheduler:
+    repository: gwhearn/airflow-ubi8
+    tag: "2.10.0"
+    pullPolicy: IfNotPresent
+  worker:
+    repository: gwhearn/airflow-ubi8
+    tag: "2.10.0"
+    pullPolicy: IfNotPresent
+  triggerer:
+    repository: gwhearn/airflow-ubi8
+    tag: "2.10.0"
+    pullPolicy: IfNotPresent
+  backup:
+    repository: postgres
+    tag: "15.5"
+    pullPolicy: IfNotPresent
+  logrotate:
+    repository: busybox
+    tag: "1.36"
+    pullPolicy: IfNotPresent
+
+postgresql:
+  host: "airflow-postgresql"
+  port: 5432
+  database: "airflow"
+  user: "airflow"
+  password: "airflow123"
+
+redis:
+  host: "airflow-redis"
+  port: 6379
+  password: "redis123"
+
+pgbouncer:
+  host: "airflow-pgbouncer"
+  port: 6432
+  maxClientConnections: 100
+  poolSize: 20
+
+webserver:
+  replicas: 1
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+scheduler:
+  replicas: 1
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+worker:
+  replicas: 2
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+triggerer:
+  replicas: 1
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+network:
+  webserver:
+    port: 8080
+  flower:
+    port: 5555
+
+storage:
+  logs:
+    size: 10Gi
+    storageClass: ""
+  dags:
+    size: 5Gi
+    storageClass: ""
+  plugins:
+    size: 1Gi
+    storageClass: ""
+  backup:
+    size: 20Gi
+    storageClass: ""
+
+backup:
+  enabled: true
+  schedule: "0 0 * * *"
+  retention: 7
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "200m"
+      memory: "512Mi"
+
+restore:
+  enabled: false
+  backupFile: ""
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "200m"
+      memory: "512Mi"
+
+logRotate:
+  enabled: true
+  schedule: "0 0 * * *"
+  retention: 7
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "200m"
+      memory: "512Mi"
+
+rbac:
+  create: true
+
+openshift:
+  route:
+    enabled: true
+    host: ""
+    tls:
+      enabled: true
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+  securityContext:
+    runAsUser: 1001
+    runAsGroup: 1001
+    fsGroup: 1001 

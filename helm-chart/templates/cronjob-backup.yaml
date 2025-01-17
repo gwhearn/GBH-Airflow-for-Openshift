@@ -1,0 +1,79 @@
+{{- if .Values.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-backup
+  namespace: {{ .Values.common.namespace }}
+  labels:
+    {{- include "airflow.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.backup.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.backup.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "airflow.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: backup
+        spec:
+          {{- with .Values.openshift.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: backup
+              image: "{{ .Values.images.backup.repository }}:{{ .Values.images.backup.tag }}"
+              imagePullPolicy: {{ .Values.images.backup.pullPolicy }}
+              env:
+                - name: PGHOST
+                  value: {{ .Values.postgresql.host | quote }}
+                - name: PGPORT
+                  value: {{ .Values.postgresql.port | quote }}
+                - name: PGDATABASE
+                  value: {{ .Values.postgresql.database | quote }}
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Release.Name }}-airflow-secrets
+                      key: postgresql-user
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Release.Name }}-airflow-secrets
+                      key: postgresql-password
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  BACKUP_FILE="/backup/airflow-$(date +%Y%m%d-%H%M%S).sql.gz"
+                  pg_dump | gzip > "$BACKUP_FILE"
+                  
+                  # Delete old backups
+                  find /backup -type f -name "airflow-*.sql.gz" -mtime +{{ .Values.backup.retention }} -delete
+              resources:
+                {{- toYaml .Values.backup.resources | nindent 16 }}
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: backup
+              persistentVolumeClaim:
+                claimName: {{ .Release.Name }}-backup
+          restartPolicy: OnFailure
+          {{- with .Values.backup.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backup.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backup.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }} 

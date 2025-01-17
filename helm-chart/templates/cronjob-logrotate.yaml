@@ -1,0 +1,59 @@
+{{- if .Values.logRotate.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-logrotate
+  namespace: {{ .Values.common.namespace }}
+  labels:
+    {{- include "airflow.labels" . | nindent 4 }}
+    app.kubernetes.io/component: logrotate
+spec:
+  schedule: {{ .Values.logRotate.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.logRotate.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.logRotate.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "airflow.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: logrotate
+        spec:
+          {{- with .Values.openshift.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: logrotate
+              image: "{{ .Values.images.logrotate.repository }}:{{ .Values.images.logrotate.tag }}"
+              imagePullPolicy: {{ .Values.images.logrotate.pullPolicy }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  find /opt/airflow/logs -type f -name "*.log" -mtime +{{ .Values.logRotate.retention }} -delete
+                  find /opt/airflow/logs -type d -empty -delete
+              resources:
+                {{- toYaml .Values.logRotate.resources | nindent 16 }}
+              volumeMounts:
+                - name: logs
+                  mountPath: /opt/airflow/logs
+          volumes:
+            - name: logs
+              persistentVolumeClaim:
+                claimName: {{ .Release.Name }}-logs
+          restartPolicy: OnFailure
+          {{- with .Values.logRotate.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.logRotate.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.logRotate.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }} 

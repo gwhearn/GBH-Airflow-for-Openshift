@@ -1,0 +1,23 @@
+{{- if .Values.openshift.route.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ .Release.Name }}-webserver
+  namespace: {{ .Values.common.namespace }}
+  labels:
+    {{- include "airflow.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webserver
+spec:
+  host: {{ .Values.openshift.route.host | default (printf "%s-airflow.%s" .Release.Name .Release.Namespace) }}
+  port:
+    targetPort: web
+  tls:
+    {{- if .Values.openshift.route.tls.enabled }}
+    termination: {{ .Values.openshift.route.tls.termination }}
+    insecureEdgeTerminationPolicy: {{ .Values.openshift.route.tls.insecureEdgeTerminationPolicy }}
+    {{- end }}
+  to:
+    kind: Service
+    name: {{ .Release.Name }}-webserver
+    weight: 100
+{{- end }} 
